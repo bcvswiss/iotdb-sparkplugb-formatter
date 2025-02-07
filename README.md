@@ -50,20 +50,6 @@ To subscribe to Sparkplug B topics, configure the following in your `iotdb-datan
 enable_mqtt_service=true
 # Set the payload formatter
 mqtt_payload_formatter=CustomizedSparkplugB
-# Configure MQTT topics (Sparkplug B format)
-# Standard Sparkplug B topic format: spBv1.0/<group_id>/<message_type>/<edge_node_id>/<device_id>
-mqtt_topic=spBv1.0/#                    # Subscribe to all Sparkplug B messages
-# Or specify particular topics:
-mqtt_topic=spBv1.0/Group1/#             # Subscribe to specific group
-mqtt_topic=spBv1.0/Group1/DDATA/#       # Subscribe to specific message type
-mqtt_topic=spBv1.0/Group1/+/Node1/#     # Subscribe to specific node
-# Multiple topics can be specified using comma separation
-mqtt_topic=spBv1.0/Group1/#,spBv1.0/Group2/#
-# Optional: Configure MQTT broker connection
-mqtt_host=localhost                      # MQTT broker hostname
-mqtt_port=1883                          # MQTT broker port
-mqtt_username=your_username             # Optional: MQTT authentication
-mqtt_password=your_password             # Optional: MQTT authentication
 ```
 
 ### Topic Format Explanation
@@ -84,26 +70,6 @@ Common message types:
 - `DDEATH`: Device death certificate
 - `NDATA`: Edge node data
 - `DDATA`: Device data
-
-### Topic Subscription Examples
-
-1. Subscribe to all Sparkplug B messages:
-
-```properties
-mqtt_topic=spBv1.0/#
-```
-
-2. Subscribe to specific group and node:
-
-```properties
-mqtt_topic=spBv1.0/Plant1/+/Node1/#
-```
-
-3. Subscribe to multiple specific devices:
-
-```properties
-mqtt_topic=spBv1.0/Plant1/DDATA/Node1/Device1,spBv1.0/Plant1/DDATA/Node1/Device2
-```
 
 ## Usage
 
