@@ -41,17 +41,6 @@ mqtt_payload_formatter=CustomizedSparkplugB
 
 5. Restart your IoTDB server to load the new formatter.
 
-## MQTT Topic Configuration
-
-To subscribe to Sparkplug B topics, configure the following in your `iotdb-datanode.properties`:
-
-```properties
-# Enable MQTT service
-enable_mqtt_service=true
-# Set the payload formatter
-mqtt_payload_formatter=CustomizedSparkplugB
-```
-
 ### Topic Format Explanation
 
 Sparkplug B topics follow this format:
