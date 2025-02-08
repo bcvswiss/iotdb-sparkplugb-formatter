@@ -21,7 +21,8 @@ public class CustomizedSparkplugPayloadFormatter implements PayloadFormatter {
 
     @Override
     public List<Message> format(ByteBuf payload) {
-        if (payload == null) {
+        if (payload == null || !payload.isReadable()) {
+            LOGGER.warn("Received null or empty payload");
             return Collections.emptyList();
         }
 
@@ -34,35 +35,38 @@ public class CustomizedSparkplugPayloadFormatter implements PayloadFormatter {
             SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
             SparkplugBPayload sparkplugPayload = decoder.buildFromByteArray(bytes, null);
             
+            if (sparkplugPayload == null || sparkplugPayload.getMetrics() == null) {
+                LOGGER.warn("Decoded payload or metrics is null");
+                return Collections.emptyList();
+            }
+            
             List<Message> messages = new ArrayList<>();
             
             for (Metric metric : sparkplugPayload.getMetrics()) {
-                Message message = new Message();
-                message.setMeasurements(Collections.singletonList(metric.getName()));
-                
-                String value = extractValue(metric);
-                if (value != null) {
-                    message.setValues(Collections.singletonList(value));
-                } else {
-                    message.setValues(Collections.singletonList("null"));
+                if (metric == null || metric.getName() == null) {
+                    LOGGER.warn("Skipping null metric or metric with null name");
+                    continue;
                 }
                 
-                message.setTimestamp(System.currentTimeMillis());
+                Message message = new Message();
+                message.setMeasurements(Collections.singletonList(metric.getName()));
+                message.setValues(Collections.singletonList(extractValue(metric)));
+                message.setTimestamp(sparkplugPayload.getTimestamp() != null ?
+                        sparkplugPayload.getTimestamp().getTime() : System.currentTimeMillis());
                 messages.add(message);
             }
             
             return messages;
         } catch (Exception e) {
-            LOGGER.error("Error parsing Sparkplug B payload", e);
+            LOGGER.error("Error parsing Sparkplug B payload: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
 
     private String extractValue(Metric metric) {
         if (metric.getValue() == null) {
-            return null;
+            return "null";
         }
-
         return metric.getValue().toString();
     }
 
