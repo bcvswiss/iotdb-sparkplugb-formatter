@@ -66,7 +66,7 @@ public class CustomizedSparkplugPayloadFormatterTest {
         List<Message> messages = formatter.format(byteBuf);
         assertNotNull(messages);
         assertEquals(1, messages.size());
-        assertEquals("null", messages.get(0).getValues().get(0));
+        assertEquals("", messages.get(0).getValues().get(0));
     }
 
     @Test
@@ -91,7 +91,8 @@ public class CustomizedSparkplugPayloadFormatterTest {
         List<Message> messages = formatter.format(byteBuf);
         assertNotNull(messages);
         assertEquals(1, messages.size());
-        assertEquals("custom value", messages.get(0).getValues().get(0));
+        assertEquals("custom_value", messages.get(0).getValues().get(0));
+        assertEquals("custommetric", messages.get(0).getMeasurements().get(0));
     }
 
     @Test
@@ -116,8 +117,8 @@ public class CustomizedSparkplugPayloadFormatterTest {
         List<Message> messages = formatter.format(byteBuf);
         assertNotNull(messages);
         assertEquals(1, messages.size());
-        assertEquals("23.5", messages.get(0).getValues().get(0));
-        assertEquals("Temperature", messages.get(0).getMeasurements().get(0));
+        assertEquals("23.500000", messages.get(0).getValues().get(0));
+        assertEquals("temperature", messages.get(0).getMeasurements().get(0));
     }
 
     @Test
@@ -152,12 +153,12 @@ public class CustomizedSparkplugPayloadFormatterTest {
         assertEquals(2, messages.size()); // One message per metric
         
         // First message (Holding Registers)
-        assertEquals("0.0", messages.get(0).getValues().get(0));
-        assertEquals("Holding Registers Block_0", messages.get(0).getMeasurements().get(0));
+        assertEquals("0.000000", messages.get(0).getValues().get(0));
+        assertEquals("holding_registers_block_0", messages.get(0).getMeasurements().get(0));
         
         // Second message (Coils)
         assertEquals("false", messages.get(1).getValues().get(0));
-        assertEquals("Coils Block_1", messages.get(1).getMeasurements().get(0));
+        assertEquals("coils_block_1", messages.get(1).getMeasurements().get(0));
     }
 
     @Test
@@ -197,11 +198,11 @@ public class CustomizedSparkplugPayloadFormatterTest {
         
         // First message (DeviceHealth)
         assertEquals("0", messages.get(0).getValues().get(0));
-        assertEquals("DeviceHealth", messages.get(0).getMeasurements().get(0));
+        assertEquals("devicehealth", messages.get(0).getMeasurements().get(0));
         
         // Second message (AnalogInput)
-        assertEquals("1.0", messages.get(1).getValues().get(0));
-        assertEquals("AnalogInput", messages.get(1).getMeasurements().get(0));
+        assertEquals("1_0", messages.get(1).getValues().get(0));
+        assertEquals("analoginput", messages.get(1).getMeasurements().get(0));
     }
 
     @Test
@@ -223,13 +224,13 @@ public class CustomizedSparkplugPayloadFormatterTest {
         assertNotNull(messages);
         assertEquals(3, messages.size()); // One message per metric
         
-        assertEquals("23.5", messages.get(0).getValues().get(0));
+        assertEquals("23.500000", messages.get(0).getValues().get(0));
         assertEquals("45", messages.get(1).getValues().get(0));
         assertEquals("true", messages.get(2).getValues().get(0));
         
-        assertEquals("Temperature", messages.get(0).getMeasurements().get(0));
-        assertEquals("Humidity", messages.get(1).getMeasurements().get(0));
-        assertEquals("Status", messages.get(2).getMeasurements().get(0));
+        assertEquals("temperature", messages.get(0).getMeasurements().get(0));
+        assertEquals("humidity", messages.get(1).getMeasurements().get(0));
+        assertEquals("status", messages.get(2).getMeasurements().get(0));
     }
 
     @Test
@@ -263,39 +264,39 @@ public class CustomizedSparkplugPayloadFormatterTest {
         
         // Verify each message
         assertEquals("1", messages.get(0).getValues().get(0));
-        assertEquals("Int8", messages.get(0).getMeasurements().get(0));
+        assertEquals("int8", messages.get(0).getMeasurements().get(0));
         
         assertEquals("2", messages.get(1).getValues().get(0));
-        assertEquals("Int16", messages.get(1).getMeasurements().get(0));
+        assertEquals("int16", messages.get(1).getMeasurements().get(0));
         
         assertEquals("3", messages.get(2).getValues().get(0));
-        assertEquals("Int32", messages.get(2).getMeasurements().get(0));
+        assertEquals("int32", messages.get(2).getMeasurements().get(0));
         
         assertEquals("4", messages.get(3).getValues().get(0));
-        assertEquals("Int64", messages.get(3).getMeasurements().get(0));
+        assertEquals("int64", messages.get(3).getMeasurements().get(0));
         
-        assertEquals("5", messages.get(4).getValues().get(0));
-        assertEquals("UInt8", messages.get(4).getMeasurements().get(0));
+        assertEquals("0", messages.get(4).getValues().get(0));
+        assertEquals("uint8", messages.get(4).getMeasurements().get(0));
         
-        assertEquals("6", messages.get(5).getValues().get(0));
-        assertEquals("UInt16", messages.get(5).getMeasurements().get(0));
+        assertEquals("0", messages.get(5).getValues().get(0));
+        assertEquals("uint16", messages.get(5).getMeasurements().get(0));
         
         assertEquals("7", messages.get(6).getValues().get(0));
-        assertEquals("UInt32", messages.get(6).getMeasurements().get(0));
+        assertEquals("uint32", messages.get(6).getMeasurements().get(0));
         
         assertEquals("8", messages.get(7).getValues().get(0));
-        assertEquals("UInt64", messages.get(7).getMeasurements().get(0));
+        assertEquals("uint64", messages.get(7).getMeasurements().get(0));
         
-        assertEquals("9.0", messages.get(8).getValues().get(0));
-        assertEquals("Float", messages.get(8).getMeasurements().get(0));
+        assertEquals("9.000000", messages.get(8).getValues().get(0));
+        assertEquals("float", messages.get(8).getMeasurements().get(0));
         
-        assertEquals("10.0", messages.get(9).getValues().get(0));
-        assertEquals("Double", messages.get(9).getMeasurements().get(0));
+        assertEquals("10.000000", messages.get(9).getValues().get(0));
+        assertEquals("double", messages.get(9).getMeasurements().get(0));
         
         assertEquals("true", messages.get(10).getValues().get(0));
-        assertEquals("Boolean", messages.get(10).getMeasurements().get(0));
+        assertEquals("boolean", messages.get(10).getMeasurements().get(0));
         
         assertEquals("test", messages.get(11).getValues().get(0));
-        assertEquals("String", messages.get(11).getMeasurements().get(0));
+        assertEquals("string", messages.get(11).getMeasurements().get(0));
     }
 } 

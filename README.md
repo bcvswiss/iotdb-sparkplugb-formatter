@@ -13,6 +13,7 @@ A custom payload formatter for Apache IoTDB that handles Sparkplug B binary mess
 - Handles null values
 - Compatible with both Modbus and OPC UA payloads
 - Preserves metric names and timestamps
+- **Unified Namespace:** Creates a unified IoTDB namespace based on metric properties
 
 ## Installation
 
@@ -60,6 +61,37 @@ Common message types:
 - `NDATA`: Edge node data
 - `DDATA`: Device data
 
+## Namespace Convention
+
+The formatter creates a unified namespace in IoTDB by extracting information from the metric properties. Device paths follow this structure:
+
+```
+root.mqtt.sparkplugb.<group_id>.<edge_node_id>.<device_id>
+```
+
+**Example:**
+
+```
+root.mqtt.sparkplugb.factoryIQ.edge123.modbus123
+```
+
+## Required Metric Properties
+
+Each Sparkplug B metric must include these properties for proper namespace creation:
+
+```
+"properties": {
+    "keys": ["group", "edge", "device"],
+    "values": [
+        {"type": 12, "stringValue": "factoryIQ"},
+        {"type": 12, "stringValue": "edge123"},
+        {"type": 12, "stringValue": "modbus123"}
+    ]
+}
+```
+
+If these properties are missing, the formatter defaults to: `root.mqtt.sparkplugb`
+
 ## Usage
 
 The formatter automatically processes incoming Sparkplug B messages and converts them to IoTDB timeseries data. Each
@@ -84,7 +116,7 @@ The formatter handles all Sparkplug B data types:
 - String
 - Complex types with properties (e.g., Modbus registers, OPC UA values)
 
-### Example
+### Example Payload
 
 A Sparkplug B payload with multiple metrics:
 
@@ -95,29 +127,61 @@ A Sparkplug B payload with multiple metrics:
     {
       "name": "Temperature",
       "type": "Float",
-      "value": 23.5
+      "value": 23.5,
+      "properties": {
+          "keys": ["group", "edge", "device"],
+          "values": [
+              {"type": 12, "stringValue": "factoryIQ"},
+              {"type": 12, "stringValue": "edge123"},
+              {"type": 12, "stringValue": "modbus123"}
+          ]
+      }
     },
     {
       "name": "Status",
       "type": "Boolean",
-      "value": true
+      "value": true,
+      "properties": {
+          "keys": ["group", "edge", "device"],
+          "values": [
+              {"type": 12, "stringValue": "factoryIQ"},
+              {"type": 12, "stringValue": "edge123"},
+              {"type": 12, "stringValue": "modbus123"}
+          ]
+      }
     },
     {
       "name": "DeviceID",
       "type": "String",
-      "value": "Device1"
+      "value": "Device1",
+      "properties": {
+          "keys": ["group", "edge", "device"],
+          "values": [
+              {"type": 12, "stringValue": "factoryIQ"},
+              {"type": 12, "stringValue": "edge123"},
+              {"type": 12, "stringValue": "modbus123"}
+          ]
+      }
     }
   ]
 }
 ```
 
-Will be converted to IoTDB measurements:
+This payload is converted to IoTDB measurements such as:
 
 ```sql
 Temperature: 23.5
 Status: true
 DeviceID: "Device1"
 ```
+
+## Logging
+
+The formatter provides detailed logging at different levels:
+
+- **INFO**: Successfully converted metrics with device path, measurement, value, and timestamp.
+- **DEBUG**: Detailed conversion process and property extraction.
+- **WARN**: Missing properties or conversion issues.
 
 ## Testing
 
@@ -130,4 +194,3 @@ mvn test
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
