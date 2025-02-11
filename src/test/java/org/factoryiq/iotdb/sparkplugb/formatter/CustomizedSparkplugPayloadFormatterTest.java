@@ -66,7 +66,8 @@ public class CustomizedSparkplugPayloadFormatterTest {
         List<Message> messages = formatter.format(byteBuf);
         assertNotNull(messages);
         assertEquals(1, messages.size());
-        assertEquals("", messages.get(0).getValues().get(0));
+        assertEquals("null", messages.get(0).getValues().get(0));
+        assertEquals("null", messages.get(0).getMeasurements().get(0));
     }
 
     @Test
@@ -92,7 +93,7 @@ public class CustomizedSparkplugPayloadFormatterTest {
         assertNotNull(messages);
         assertEquals(1, messages.size());
         assertEquals("custom_value", messages.get(0).getValues().get(0));
-        assertEquals("custommetric", messages.get(0).getMeasurements().get(0));
+        assertEquals("custom_metric", messages.get(0).getMeasurements().get(0));
     }
 
     @Test
@@ -198,11 +199,11 @@ public class CustomizedSparkplugPayloadFormatterTest {
         
         // First message (DeviceHealth)
         assertEquals("0", messages.get(0).getValues().get(0));
-        assertEquals("devicehealth", messages.get(0).getMeasurements().get(0));
+        assertEquals("device_health", messages.get(0).getMeasurements().get(0));
         
         // Second message (AnalogInput)
-        assertEquals("1_0", messages.get(1).getValues().get(0));
-        assertEquals("analoginput", messages.get(1).getMeasurements().get(0));
+        assertEquals("1.0", messages.get(1).getValues().get(0));
+        assertEquals("analog_input", messages.get(1).getMeasurements().get(0));
     }
 
     @Test

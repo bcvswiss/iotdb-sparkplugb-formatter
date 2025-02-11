@@ -6,14 +6,11 @@ import io.netty.buffer.ByteBuf;
 import org.eclipse.tahu.protobuf.SparkplugBProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import com.google.common.collect.Lists;
 
 public class CustomizedSparkplugPayloadFormatter implements PayloadFormatter {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomizedSparkplugPayloadFormatter.class);
-    // Default device if we cannot extract properties
     private static final String DEFAULT_DEVICE = "root.mqtt.sparkplugb";
 
     @Override
@@ -27,51 +24,97 @@ public class CustomizedSparkplugPayloadFormatter implements PayloadFormatter {
             byte[] bytes = new byte[payload.readableBytes()];
             payload.readBytes(bytes);
             
-            // Decoding Sparkplug B payload using protobuf
             SparkplugBProto.Payload protoPayload = SparkplugBProto.Payload.parseFrom(bytes);
-            List<Message> messages = convertProtoMetricsToMessages(protoPayload);
             
-            // Log successful conversion
-            if (!messages.isEmpty()) {
-                LOGGER.info("Successfully converted {} metrics:", messages.size());
-                for (Message msg : messages) {
-                    LOGGER.info("Device: {}, Measurement: {}, Value: {}, Timestamp: {}", 
-                        msg.getDevice(),
-                        msg.getMeasurements().get(0),
-                        msg.getValues().get(0),
-                        msg.getTimestamp());
+            if (protoPayload.getMetricsCount() == 0) {
+                LOGGER.warn("Payload contains no metrics");
+                return Collections.emptyList();
+            }
+
+            List<Message> messages = new ArrayList<>();
+            for (SparkplugBProto.Payload.Metric metric : protoPayload.getMetricsList()) {
+                try {
+                    Message message = createMessageFromMetric(metric);
+                    if (message != null && isValidMessage(message)) {
+                        messages.add(message);
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("Error processing metric {}: {}", metric.getName(), e.getMessage(), e);
                 }
-            } else {
-                LOGGER.warn("No metrics were converted from the payload");
             }
             
             return messages;
         } catch (Exception e) {
-            LOGGER.error("Error parsing Sparkplug B payload: {}", e.getMessage());
+            LOGGER.error("Error parsing Sparkplug B payload: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
 
-    private List<Message> convertProtoMetricsToMessages(SparkplugBProto.Payload payload) {
-        List<Message> messages = new ArrayList<>();
-        long timestamp = payload.getTimestamp();
-        
-        LOGGER.debug("Processing {} metrics from payload", payload.getMetricsCount());
-        
-        for (SparkplugBProto.Payload.Metric metric : payload.getMetricsList()) {
-            Message message = createMessageFromMetric(metric, timestamp);
-            if (message != null) {
-                messages.add(message);
-            }
+    private Message createMessageFromMetric(SparkplugBProto.Payload.Metric metric) {
+        try {
+            Message message = new Message();
+            String device = extractDeviceFromProperties(metric);
+            message.setDevice(device);
+            
+            String normalizedName = normalizeString(metric.getName());
+            message.setMeasurements(Lists.newArrayList(normalizedName));
+
+            long metricTimestamp = convertSparkplugTimestamp(metric.getTimestamp());
+            message.setTimestamp(metricTimestamp > 0 ? metricTimestamp : System.currentTimeMillis());
+
+            String value = convertMetricValue(metric);
+            message.setValues(Lists.newArrayList(value));
+                
+            return message;
+        } catch (Exception e) {
+            LOGGER.error("Error creating message for metric {}: {}", metric.getName(), e.getMessage(), e);
+            return null;
         }
-        return messages;
     }
 
-    /**
-     * Build a unified device namespace from the Sparkplug metric properties if available.
-     * The expected keys are "group", "edge" and "device". The resulting device path will be:
-     * root.mqtt.sparkplugb.<group>.<edge>.<device>
-     */
+    private String convertMetricValue(SparkplugBProto.Payload.Metric metric) {
+        try {
+            switch (metric.getDatatype()) {
+                case 0:  // Unknown/Number - treat as Double
+                case 10: // Double
+                    return String.format("%.6f", metric.getDoubleValue());
+                case 1: // Int8
+                case 2: // Int16
+                case 3: // Int32
+                    return String.valueOf(metric.getIntValue());
+                case 4: // Int64/UInt32
+                case 5: // UInt8
+                case 6: // UInt16
+                case 7: // UInt32
+                case 8: // UInt64
+                    return String.valueOf(metric.getLongValue());
+                case 9: // Float
+                    return String.format("%.6f", metric.getFloatValue());
+                case 11: // Boolean
+                    return String.valueOf(metric.getBooleanValue());
+                case 12: // String
+                case 13: // Text
+                    return normalizeValue(metric.getStringValue());
+                default:
+                    LOGGER.warn("Unexpected datatype {} for metric {}, defaulting to double", 
+                        metric.getDatatype(), metric.getName());
+                    return String.format("%.6f", metric.getDoubleValue());
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error converting value for metric {}: {}", metric.getName(), e.getMessage());
+            return "null";
+        }
+    }
+
+    private long convertSparkplugTimestamp(long timestamp) {
+        try {
+            return timestamp > 0 ? timestamp : System.currentTimeMillis();
+        } catch (Exception e) {
+            LOGGER.error("Error converting timestamp: {}", e.getMessage());
+            return System.currentTimeMillis();
+        }
+    }
+
     private String extractDeviceFromProperties(SparkplugBProto.Payload.Metric metric) {
         if (metric.hasProperties()) {
             SparkplugBProto.Payload.PropertySet properties = metric.getProperties();
@@ -113,82 +156,47 @@ public class CustomizedSparkplugPayloadFormatter implements PayloadFormatter {
         return DEFAULT_DEVICE;
     }
 
-    private Message createMessageFromMetric(SparkplugBProto.Payload.Metric metric, long timestamp) {
-        try {
-            Message message = new Message();
-            String device = extractDeviceFromProperties(metric);
-            message.setDevice(device);
-            String normalizedName = normalizeString(metric.getName());
-            message.setMeasurements(Collections.singletonList(normalizedName));
-            
-            // Use metric timestamp if available, otherwise use payload timestamp
-            long metricTime = metric.hasTimestamp() ? metric.getTimestamp() : timestamp;
-            if (metricTime <= 0) {
-                metricTime = System.currentTimeMillis();
-            }
-            message.setTimestamp(metricTime);
-
-            int dataType = metric.getDatatype();
-            String value = null;
-            
-            switch (dataType) {
-                case 1: // Int8
-                case 2: // Int16
-                case 3: // Int32
-                    value = String.valueOf(metric.getIntValue());
-                    break;
-                case 4: // Int64
-                case 5: // UInt8
-                case 6: // UInt16
-                case 7: // UInt32
-                case 8: // UInt64
-                    value = String.valueOf(metric.getLongValue());
-                    break;
-                case 9: // Float
-                    value = String.format("%.6f", metric.getFloatValue());
-                    break;
-                case 10: // Double
-                    value = String.format("%.6f", metric.getDoubleValue());
-                    break;
-                case 11: // Boolean
-                    value = String.valueOf(metric.getBooleanValue());
-                    break;
-                case 12: // String
-                case 13: // Text
-                    value = normalizeString(metric.getStringValue());
-                    break;
-                default:
-                    value = String.valueOf(metric.getDoubleValue());
-                    break;
-            }
-            
-            message.setValues(Collections.singletonList(value));
-            
-            LOGGER.debug("Created message - Device: {}, Measurement: {}, Value: {}, Time: {}", 
-                device, normalizedName, value, metricTime);
-            
-            return message;
-        } catch (Exception e) {
-            LOGGER.error("Error creating message for metric {}: {}", metric.getName(), e.getMessage());
-            return null;
+    private boolean isValidMessage(Message message) {
+        if (message.getDevice() == null || !message.getDevice().startsWith("root.")) {
+            LOGGER.warn("Invalid device path: {}", message.getDevice());
+            return false;
         }
+        
+        if (message.getMeasurements() == null || message.getMeasurements().isEmpty() ||
+            message.getValues() == null || message.getValues().isEmpty() ||
+            message.getMeasurements().size() != message.getValues().size()) {
+            LOGGER.warn("Invalid measurements or values for device: {}", message.getDevice());
+            return false;
+        }
+        
+        if (message.getTimestamp() <= 0) {
+            LOGGER.warn("Invalid timestamp for device: {}", message.getDevice());
+            return false;
+        }
+        
+        return true;
     }
 
-    /**
-     * Normalizes strings by replacing spaces with underscores, converting to lowercase,
-     * and removing any invalid characters
-     * @param input The input string to normalize
-     * @return The normalized string
-     */
     private String normalizeString(String input) {
-        if (input == null) {
-            return "";
+        if (input == null || input.trim().isEmpty()) {
+            return "null";
         }
-        // Replace spaces with underscores, convert to lowercase, and remove any other potentially problematic characters
+        
+        if (input.equals("NullMetric")) {
+            return "null";
+        }
+        
         return input.trim()
-                   .toLowerCase()
-                   .replaceAll("\\s+", "_")
-                   .replaceAll("[^a-z0-9_-]", "_");
+            .replaceAll("([a-z])([A-Z])", "$1_$2")
+            .replaceAll("\\s+", "_")
+            .toLowerCase();
+    }
+
+    private String normalizeValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "null";
+        }
+        return value.replaceAll("\\s+", "_");
     }
 
     @Override
