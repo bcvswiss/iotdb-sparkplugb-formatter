@@ -136,10 +136,19 @@ public class CustomizedSparkplugPayloadFormatter implements PayloadFormatter {
                         case "group":
                             group = normalizeString(value.getStringValue());
                             break;
+                        case "GroupID":  // Custom property name
+                            group = normalizeString(value.getStringValue());
+                            break;
                         case "edge":
                             edge = normalizeString(value.getStringValue());
                             break;
+                        case "EdgeNodeID":  // Custom property name
+                            edge = normalizeString(value.getStringValue());
+                            break;
                         case "device":
+                            device = normalizeString(value.getStringValue());
+                            break;
+                        case "AgentID":  // Custom property name
                             device = normalizeString(value.getStringValue());
                             break;
                     }

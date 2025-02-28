@@ -79,6 +79,7 @@ root.mqtt.sparkplugb.factoryIQ.edge123.modbus123
 
 Each Sparkplug B metric must include these properties for proper namespace creation:
 
+### Original Property Names
 ```
 "properties": {
     "keys": ["group", "edge", "device"],
@@ -89,6 +90,21 @@ Each Sparkplug B metric must include these properties for proper namespace creat
     ]
 }
 ```
+
+### Custom Property Names
+This formatter also supports an alternative set of property names:
+```
+"properties": {
+    "keys": ["GroupID", "EdgeNodeID", "AgentID"],
+    "values": [
+        {"type": 12, "stringValue": "factoryIQ"},
+        {"type": 12, "stringValue": "edge123"},
+        {"type": 12, "stringValue": "modbus123"}
+    ]
+}
+```
+
+The formatter will first check for the custom property names, and if not found, will fall back to the original property names. This ensures backward compatibility while supporting systems that use the custom naming convention.
 
 If these properties are missing, the formatter defaults to: `root.mqtt.sparkplugb`
 

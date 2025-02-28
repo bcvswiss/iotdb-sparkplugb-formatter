@@ -300,4 +300,74 @@ public class CustomizedSparkplugPayloadFormatterTest {
         assertEquals("test", messages.get(11).getValues().get(0));
         assertEquals("string", messages.get(11).getMeasurements().get(0));
     }
+
+    @Test
+    public void testCustomPropertyNames() throws Exception {
+        Date timestamp = new Date();
+        List<Metric> metrics = new ArrayList<>();
+        SparkplugBPayload payload = new SparkplugBPayload(
+            timestamp, metrics, 0L, UUID.randomUUID().toString(), null
+        );
+        
+        // Create a metric with custom property names
+        PropertySet properties = new PropertySet();
+        properties.put("GroupID", new PropertyValue<>(PropertyDataType.String, "TestGroup"));
+        properties.put("EdgeNodeID", new PropertyValue<>(PropertyDataType.String, "TestEdge"));
+        properties.put("AgentID", new PropertyValue<>(PropertyDataType.String, "TestDevice"));
+        
+        Metric metric = new Metric.MetricBuilder("Temperature", MetricDataType.Float, 25.5f)
+            .properties(properties)
+            .createMetric();
+        payload.addMetric(metric);
+        
+        byte[] bytes = new SparkplugBPayloadEncoder().getBytes(payload, false);
+        ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
+
+        List<Message> messages = formatter.format(byteBuf);
+        assertNotNull(messages);
+        assertEquals(1, messages.size());
+        
+        // Verify the device path contains the custom property values
+        String devicePath = messages.get(0).getDevice();
+        assertTrue(devicePath.contains("test_group"));
+        assertTrue(devicePath.contains("test_edge"));
+        assertTrue(devicePath.contains("test_device"));
+        assertEquals("25.500000", messages.get(0).getValues().get(0));
+        assertEquals("temperature", messages.get(0).getMeasurements().get(0));
+    }
+    
+    @Test
+    public void testMixedPropertyNames() throws Exception {
+        Date timestamp = new Date();
+        List<Metric> metrics = new ArrayList<>();
+        SparkplugBPayload payload = new SparkplugBPayload(
+            timestamp, metrics, 0L, UUID.randomUUID().toString(), null
+        );
+        
+        // Create a metric with mixed property names (some original, some custom)
+        PropertySet properties = new PropertySet();
+        properties.put("GroupID", new PropertyValue<>(PropertyDataType.String, "TestGroup"));
+        properties.put("edge", new PropertyValue<>(PropertyDataType.String, "TestEdge"));
+        properties.put("AgentID", new PropertyValue<>(PropertyDataType.String, "TestDevice"));
+        
+        Metric metric = new Metric.MetricBuilder("Temperature", MetricDataType.Float, 25.5f)
+            .properties(properties)
+            .createMetric();
+        payload.addMetric(metric);
+        
+        byte[] bytes = new SparkplugBPayloadEncoder().getBytes(payload, false);
+        ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
+
+        List<Message> messages = formatter.format(byteBuf);
+        assertNotNull(messages);
+        assertEquals(1, messages.size());
+        
+        // Verify the device path contains all property values
+        String devicePath = messages.get(0).getDevice();
+        assertTrue(devicePath.contains("test_group"));
+        assertTrue(devicePath.contains("test_edge"));
+        assertTrue(devicePath.contains("test_device"));
+        assertEquals("25.500000", messages.get(0).getValues().get(0));
+        assertEquals("temperature", messages.get(0).getMeasurements().get(0));
+    }
 } 
